@@ -2,7 +2,8 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-const app=express(); app.use(express.json()); const PORT=8787; const file=path.resolve('state.json'); const now=()=>new Date().toISOString();
+import { createServer as createViteServer } from 'vite';
+const app=express(); app.use(express.json()); const PORT=5173; const file=path.resolve('state.json'); const now=()=>new Date().toISOString();
 const seed=()=>({school:{name:'Gläntanskolan',role:'Skolledare',user:'Daniel'},challenges:[
 {id:'lesson',title:'Lektionsstruktur',question:'Hur skapar vi en mer förutsägbar, engagerande och effektiv lektionsstart?',category:'Undervisning',color:'violet',status:'Pågående'},
 {id:'attendance',title:'Närvaro',question:'Hur upptäcker och agerar vi tidigare på problematisk frånvaro?',category:'Elevhälsa',color:'blue',status:'Pågående'},
@@ -27,4 +28,6 @@ app.delete('/api/nodes/:id',(q,r)=>{state.nodes=state.nodes.filter(n=>n.id!==q.p
 app.post('/api/challenges/:id/links',(q,r)=>{const l={id:randomUUID(),challengeId:q.params.id,from:q.body.from,to:q.body.to};state.links.push(l);save();r.status(201).json(l)});
 app.get('/api/network-models',(q,r)=>{const s=String(q.query.q||'').toLowerCase();r.json(!s?state.models:state.models.filter(m=>JSON.stringify(m).toLowerCase().includes(s)))});
 app.post('/api/challenges/:cid/import/:mid',(q,r)=>{const m=state.models.find(x=>x.id===q.params.mid);if(!m)return r.sendStatus(404);const cur=state.nodes.filter(n=>n.challengeId===q.params.cid);const y=cur.length?Math.max(...cur.map(n=>n.y))+250:170;const imported=m.steps.map((s,i)=>({id:randomUUID(),challengeId:q.params.cid,type:s[0],title:s[1],body:s[2],x:70+i*240,y,sourceModelId:m.id}));state.nodes.push(...imported);for(let i=0;i<imported.length-1;i++)state.links.push({id:randomUUID(),challengeId:q.params.cid,from:imported[i].id,to:imported[i+1].id});save();r.status(201).json({model:m,imported})});
-app.listen(PORT,'0.0.0.0',()=>console.log('RISE API http://localhost:'+PORT));
+const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});
+app.use(vite.middlewares);
+app.listen(PORT,'0.0.0.0',()=>console.log('RISE Project http://localhost:'+PORT));
